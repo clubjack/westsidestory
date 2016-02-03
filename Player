@@ -1,0 +1,199 @@
+import urllib.request
+import urllib.parse
+import json
+
+class Player:
+    
+    def __init__(self,my_id=None,server='wsstest'):
+        self.data={}
+        self.serverlist={'wsstest':'http://123.59.62.112/wsstest/api.php',
+                    'my':'http://w1.west.6waves.com/api.php',
+                         'local':'http://192.168.1.109/WestsideStory/api.php',
+                         'my_test':'http://123.59.62.112/wssmy/api.php',
+                         'live_cn':'http://119.29.142.171/live/api.php'}
+        #self.data['sdk_channel']='my'
+        #我暂时认为sdk_channel无关紧要，所以固定不处理了
+        
+        self.data['sdk_channel']='6waves'
+        self.data['sdk_uid']=str(my_id) if my_id else ''
+        self.data['ver']='0.5.3'
+        #self.my_id=my_id
+        self.ts=None
+        self.token=None
+        self.my_udata={}
+
+        
+        
+        self.url=self.serverlist[server]
+
+
+    def letsgo(self):
+        
+        self.login()
+        self.getInfos()
+        self.getMthReward()
+    def login(self,uid=None):
+
+        #构造参数
+        data={}
+        data.update(self.data)
+        data['_cmd']='login'
+        data['cmd']='dummy'
+        data['os']='Android 5.0.2'
+        data['sdk_token']=None
+        data['uid']=self.data['sdk_uid'] if not uid else uid
+        data['sdk_uid']=data['uid']
+        resp_login=urllib.request.urlopen(self.url,urllib.parse.urlencode(data).encode('utf-8'))
+        usable_data=json.loads(resp_login.read().decode('utf-8'))
+        self.data['ts']=usable_data['ts']
+        self.data['token']=usable_data['token']
+        self.data['sdk_uid']=usable_data['sdk_uid']
+        self.getInfos()
+        #return usable_data
+        
+    def getInfos(self):
+        data_getInfos={}
+        data_getInfos.update(self.data)
+        data_getInfos['cmd']='getInfos'
+        data_getInfos['device']='HTC 802w'
+        data_getInfos['deviceid']='3d77cb2c2d0ab08f1e8e397985dfb41cb'
+        data_getInfos['network']='3G'
+        data_getInfos['os']='Android 5.0.2'
+        data_getInfos['resolution']='1080*1920'
+        data_getInfos['serverid']='6'
+        data_getInfos['uid']=self.data['sdk_uid']
+        resp_getInfos=urllib.request.urlopen(self.url,urllib.parse.urlencode(data_getInfos).encode('utf-8'))
+        resp_getInfos_usable=json.loads(resp_getInfos.read().decode('utf-8'))
+        self.my_udata=resp_getInfos_usable['udata']
+        self.data['uid']=self.my_udata['id']
+        return resp_getInfos_usable
+        
+    def getMthReward(self):
+        if not self.my_udata:return
+        if self.my_udata['activities']['1']['mthdaily']['isrw']==0:
+            data_getMthReward={}
+            data_getMthReward.update(self.data)
+            data_getMthReward['_cmd']='getMthReward'
+            data_getMthReward['cmd']='daily'
+            data_getMthReward['m']=self.my_udata['activities']['1']['mthdaily']['num']+1
+            resp_getMthReward=urllib.request.urlopen(self.url,urllib.parse.urlencode(data_getMthReward).encode('utf-8'))
+            
+    def pass_level(self,level):
+        level=str(level)
+        episode=level[:4]
+
+        
+        data_start_level={}
+        data_start_level.update(self.data)
+        data_start_level['_cmd']='start'
+        data_start_level['cmd']='game'
+        data_start_level['lv']=level
+        data_start_level['map']=episode
+        data_start_level['type']='1'
+        
+        resp_start_level=urllib.request.urlopen(self.url,urllib.parse.urlencode(data_start_level).encode('utf-8'))
+
+        data_end_level={}
+        data_end_level.update(self.data)
+        data_end_level['_cmd']='end'
+        data_end_level['cmd']='game'
+        data_end_level['damage']='157599'
+        data_end_level['damages']='[{"id":140000041,"d":5449,"lv":25,"star":1},{"id":140000020,"d":11755,"lv":25,"star":1},{"id":140000021,"d":4122,"lv":25,"star":3},{"id":140000014,"d":3918,"lv":25,"star":1}]'
+        data_end_level['result']='1'
+        data_end_level['score']='99999'
+        data_end_level['star']='3'
+        
+        resp_end_level=urllib.request.urlopen(self.url,urllib.parse.urlencode(data_end_level).encode('utf-8'))
+
+    def pass_episode(self,episode):
+        if episode not in range(1101,1150):
+            return
+        episodes={'1101':3,'1102':3,'1103':9,'1104':9,'1105':9}
+        level_count=10 if str(episode) not in episodes.keys() else episodes[str(episode)]
+        for i in range(level_count):
+            self.pass_level(episode*100+1+i)
+
+            
+    def change_nickname(self,nickname=None):
+        nickname=nickname or self.data['sdk_uid']
+        data_change_nickname={}
+        data_change_nickname.update(self.data)
+        data_change_nickname['cmd']='expand'
+        data_change_nickname['_cmd']='buyuse'
+        data_change_nickname['pid']='160400002'
+        data_change_nickname['nick']=nickname
+        resp_change_nickname=urllib.request.urlopen(self.url,urllib.parse.urlencode(data_change_nickname).encode('utf-8'))
+
+    def complete_ftue(self,step='1'):
+        data_complete_ftue={}
+        data_complete_ftue.update(self.data)
+        data_complete_ftue['_cmd']='ftue'
+        data_complete_ftue['cmd']='expand'
+        data_complete_ftue['step']=step
+        resp_complete_ftue=urllib.request.urlopen(self.url,urllib.parse.urlencode(data_complete_ftue).encode('utf-8'))
+    def complete_ftue_all(self):
+        ftue=['1','4','3','2','6,','7','8','9','10','11','12','15','19','20','21']
+        for f in ftue:
+            self.complete_ftue(f)
+
+    def casino(self):
+        data_casino={}
+        data_casino.update(self.data)
+        data_casino['_cmd']='casino'
+        data_casino['cmd']='card'
+        data_casino['free']='1'
+        data_casino['num']='1'
+        data_casino['type']='3'
+
+        resp_casino=urllib.request.urlopen(self.url,urllib.parse.urlencode(data_casino).encode('utf-8'))
+
+    def get_episode_reward(self,episode='1101'):
+        data_get_episode_reward={}
+        data_get_episode_reward.update(self.data)
+        data_get_episode_reward['_cmd']='annalsreward'
+        data_get_episode_reward['cmd']='expand'
+        data_get_episode_reward['map']=episode
+
+        resp_get_episode_reward=urllib.request.urlopen(self.url,urllib.parse.urlencode(data_get_episode_reward).encode('utf-8'))
+
+    def i_am_new(self):
+        self.login()
+        self.pass_level(100101)
+        self.change_nickname()
+        self.complete_ftue_all()
+        self.casino()
+        self.pass_level(110101)
+        self.pass_level(110102)
+        self.pass_level(110103)
+        self.get_episode_reward()
+
+    def register(self):
+        data_register={}
+        data_register.update(self.data)
+        data_register['_cmd']='register'
+        data_register['cmd']='dummy'
+        data_register['nick']=''
+        data_register['pass']=''
+        data_register['uid']=''
+        resp_register=urllib.request.urlopen(self.url,urllib.parse.urlencode(data_register).encode('utf-8'))
+        resp_register_usable=json.loads(resp_register.read().decode('utf-8'))
+        self.data['uid']=resp_register_usable['nick']
+        self.login(self.data['uid'])
+
+    def pass_futu(self):
+        data_start_futu={}
+        data_start_futu.update(self.data)
+        data_start_futu['cmd']='game'
+        data_start_futu['_cmd']='startfutu'
+        resp_start_futu=urllib.request.urlopen(self.url,urllib.parse.urlencode(data_start_futu).encode('utf-8'))
+
+        data_end_futu={}
+        data_end_futu.update(self.data)
+        data_end_futu['cmd']='game'
+        data_end_futu['_cmd']='endfutu'
+        data_end_futu['result']='1'
+        data_end_futu['damage']='373449'
+        resp_end_futu=urllib.request.urlopen(self.url,urllib.parse.urlencode(data_end_futu).encode('utf-8'))
+
+        
+
